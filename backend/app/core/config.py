@@ -16,8 +16,8 @@ class Settings(BaseSettings):
 
     upload_dir: Path = Path("data/uploads")
     artifact_dir: Path = Path("data/artifacts")
-    max_upload_mb: int = 200
-    max_download_mb: int = 200
+    max_upload_mb: int = 1024
+    max_download_mb: int = 1024
     download_timeout_seconds: int = 30
 
     # Optional comma-separated allowlist: e.g. "example.com,cdn.example.com"

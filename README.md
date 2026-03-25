@@ -17,7 +17,7 @@ Web-based UI + FastAPI backend for video upload/URL prediction tasks with async 
   - bottom area for visualization results
 - Auth in front-end demo mode (`demo` / `demo123` by default)
 - Create task by:
-  - MP4 upload (<= 200MB)
+  - MP4/MOV upload (<= 1GB)
   - Public direct video URL (`http/https`)
 - Async task pipeline:
   - file: `queued -> processing -> succeeded/failed`

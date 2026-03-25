@@ -23,6 +23,7 @@ export default function LoginPage(): JSX.Element {
     setError("");
     setSuccess("");
     setLoading(true);
+
     try {
       if (mode === "register") {
         if (password.length < 6) {
@@ -31,6 +32,7 @@ export default function LoginPage(): JSX.Element {
         if (password !== confirmPassword) {
           throw new Error("两次输入的密码不一致");
         }
+
         await register(company, username, password);
         setSuccess("注册成功，请使用账号登录");
         setMode("login");
@@ -54,21 +56,21 @@ export default function LoginPage(): JSX.Element {
           <p className="eyebrow">苏州小棉袄电商公司</p>
           <h1>直播销量预测平台</h1>
           <p className="auth-summary">
-            面向直播电商团队的一站式分析平台。上传直播视频后，系统自动提取声音、文本、表情等多模态特征，预测销量并给出优化建议。
+            面向直播电商团队的一站式分析平台。上传直播视频后，系统自动提取声音、文本、视觉等多模态特征，预测销量并给出优化建议。
           </p>
 
           <div className="showcase-grid">
             <article>
               <h3>直播多特征评分</h3>
-              <p>实时评估声音感染力、话术质量、表情表现，定位转化关键因素。</p>
+              <p>实时评估声音感染力、话术质量、视觉表现，定位影响转化的关键因素。</p>
             </article>
             <article>
               <h3>销量趋势可视化</h3>
-              <p>以时间序列与联动图表展示分值波动，快速识别高转化时段。</p>
+              <p>以时间序列和联动图表展示波动区间，快速识别高转化时段。</p>
             </article>
             <article>
               <h3>电商场景建议</h3>
-              <p>结合评分与预测结果，输出可执行的直播优化策略。</p>
+              <p>结合评分和预测结果，输出可执行的直播优化策略。</p>
             </article>
           </div>
         </div>
@@ -102,20 +104,33 @@ export default function LoginPage(): JSX.Element {
           </div>
 
           <h2>{mode === "login" ? "欢迎回来" : "创建账号"}</h2>
-          <p className="muted">{mode === "login" ? "默认演示账号：demo / demo123" : "注册后可直接进入演示工作台"}</p>
+          <p className="muted">
+            {mode === "login" ? "默认演示账号：demo / demo123" : "注册后可直接进入演示工作台"}
+          </p>
 
           <form onSubmit={onSubmit} className="form-grid">
             {mode === "register" && (
               <label>
                 公司名称
-                <input value={company} onChange={(event) => setCompany(event.target.value)} placeholder="请输入公司名称" required />
+                <input
+                  value={company}
+                  onChange={(event) => setCompany(event.target.value)}
+                  placeholder="请输入公司名称"
+                  required
+                />
               </label>
             )}
 
             <label>
               用户名
-              <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="请输入用户名" required />
+              <input
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                placeholder="请输入用户名"
+                required
+              />
             </label>
+
             <label>
               密码
               <input
@@ -143,6 +158,7 @@ export default function LoginPage(): JSX.Element {
             <button disabled={loading} type="submit">
               {loading ? "处理中..." : mode === "login" ? "进入工作台" : "创建账号"}
             </button>
+
             {error && <p className="error">{error}</p>}
             {success && <p className="success">{success}</p>}
           </form>

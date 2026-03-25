@@ -1,4 +1,5 @@
 from pathlib import Path
+from urllib.parse import urlparse
 from uuid import uuid4
 
 import requests
@@ -18,13 +19,20 @@ def ensure_storage_dirs() -> None:
     settings.artifact_dir.mkdir(parents=True, exist_ok=True)
 
 
-def _safe_video_path(prefix: str = "video") -> Path:
-    filename = f"{prefix}_{uuid4().hex}.mp4"
+def _normalize_video_suffix(suffix: str | None) -> str:
+    normalized = (suffix or "").lower()
+    if normalized not in {".mp4", ".mov"}:
+        return ".mp4"
+    return normalized
+
+
+def _safe_video_path(prefix: str = "video", suffix: str | None = None) -> Path:
+    filename = f"{prefix}_{uuid4().hex}{_normalize_video_suffix(suffix)}"
     return settings.upload_dir / filename
 
 
 def save_upload_file(file: UploadFile) -> str:
-    dst = _safe_video_path("upload")
+    dst = _safe_video_path("upload", Path(file.filename or "").suffix)
     written = 0
     max_bytes = settings.max_upload_mb * CHUNK_SIZE
 
@@ -43,7 +51,8 @@ def save_upload_file(file: UploadFile) -> str:
 
 
 def download_video_from_url(url: str) -> str:
-    dst = _safe_video_path("url")
+    url_suffix = Path(urlparse(url).path).suffix
+    dst = _safe_video_path("url", url_suffix)
     total = 0
     max_bytes = settings.max_download_mb * CHUNK_SIZE
 

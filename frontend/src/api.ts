@@ -25,7 +25,10 @@ function ensureUsers(): LocalUser[] {
   if (raw) {
     return JSON.parse(raw) as LocalUser[];
   }
-  const defaults: LocalUser[] = [{ company: "苏州小棉袄电商公司", username: "demo", password: "demo123" }];
+
+  const defaults: LocalUser[] = [
+    { company: "苏州小棉袄电商公司", username: "demo", password: "demo123" }
+  ];
   localStorage.setItem(USERS_KEY, JSON.stringify(defaults));
   return defaults;
 }
@@ -41,6 +44,7 @@ function setActiveUser(username: string): void {
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers = new Headers(init.headers);
+
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
@@ -52,10 +56,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       const data = await response.json();
       detail = data.detail ?? detail;
     } catch {
-      // no-op
+      // ignore JSON parse failure
     }
     throw new Error(detail);
   }
+
   return (await response.json()) as T;
 }
 
@@ -64,7 +69,12 @@ export async function register(company: string, username: string, password: stri
   if (users.some((item) => item.username.toLowerCase() === username.toLowerCase())) {
     throw new Error("用户名已存在");
   }
-  users.push({ company: company.trim(), username: username.trim(), password });
+
+  users.push({
+    company: company.trim(),
+    username: username.trim(),
+    password
+  });
   saveUsers(users);
 }
 
@@ -74,9 +84,11 @@ export async function login(username: string, password: string): Promise<void> {
     const matched = users.find(
       (item) => item.username.toLowerCase() === username.toLowerCase() && item.password === password
     );
+
     if (!matched) {
       throw new Error("用户名或密码错误");
     }
+
     saveToken(`mock-token-${matched.username}`);
     setActiveUser(matched.username);
     return;
@@ -87,6 +99,7 @@ export async function login(username: string, password: string): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password })
   });
+
   saveToken(response.access_token);
   setActiveUser(username);
 }
@@ -108,37 +121,43 @@ export function isMockModeEnabled(): boolean {
   return MOCK_MODE;
 }
 
-export async function uploadVideo(file: File): Promise<TaskCreateResponse> {
+export async function uploadVideo(file: File, signal?: AbortSignal): Promise<TaskCreateResponse> {
   const form = new FormData();
   form.append("file", file);
+
   return request<TaskCreateResponse>("/api/videos/upload", {
     method: "POST",
-    body: form
+    body: form,
+    signal
   });
 }
 
-export async function createTaskByUrl(url: string): Promise<TaskCreateResponse> {
+export async function createTaskByUrl(url: string, signal?: AbortSignal): Promise<TaskCreateResponse> {
   return request<TaskCreateResponse>("/api/videos/by-url", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url })
+    body: JSON.stringify({ url }),
+    signal
   });
 }
 
-export async function fetchTask(taskId: string): Promise<TaskItem> {
-  return request<TaskItem>(`/api/tasks/${taskId}`);
+export async function fetchTask(taskId: string, signal?: AbortSignal): Promise<TaskItem> {
+  return request<TaskItem>(`/api/tasks/${taskId}`, { signal });
 }
 
-export async function fetchTaskResult(taskId: string): Promise<TaskResultResponse> {
-  return request<TaskResultResponse>(`/api/tasks/${taskId}/result`);
+export async function fetchTaskResult(taskId: string, signal?: AbortSignal): Promise<TaskResultResponse> {
+  return request<TaskResultResponse>(`/api/tasks/${taskId}/result`, { signal });
 }
 
-export async function fetchTasks(page = 1, pageSize = 10): Promise<PaginatedTasks> {
-  return request<PaginatedTasks>(`/api/tasks?page=${page}&page_size=${pageSize}`);
+export async function fetchTasks(page = 1, pageSize = 10, signal?: AbortSignal): Promise<PaginatedTasks> {
+  return request<PaginatedTasks>(`/api/tasks?page=${page}&page_size=${pageSize}`, { signal });
 }
 
-export async function retryTask(taskId: string): Promise<TaskItem> {
-  return request<TaskItem>(`/api/tasks/${taskId}/retry`, { method: "POST" });
+export async function retryTask(taskId: string, signal?: AbortSignal): Promise<TaskItem> {
+  return request<TaskItem>(`/api/tasks/${taskId}/retry`, {
+    method: "POST",
+    signal
+  });
 }
 
 export function artifactUrl(path: string): string {

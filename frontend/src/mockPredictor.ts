@@ -13,9 +13,30 @@ export type MockProgress = {
   label: string;
 };
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
+function abortIfNeeded(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw new DOMException("分析已取消", "AbortError");
+  }
+}
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      cleanup();
+      resolve();
+    }, ms);
+
+    const onAbort = () => {
+      window.clearTimeout(timer);
+      cleanup();
+      reject(new DOMException("分析已取消", "AbortError"));
+    };
+
+    const cleanup = () => {
+      signal?.removeEventListener("abort", onAbort);
+    };
+
+    signal?.addEventListener("abort", onAbort);
   });
 }
 
@@ -44,43 +65,48 @@ function createHeatmapDataUrl(score: number, second: number): string {
     </defs>
     <rect width="720" height="405" fill="url(#bg)" />
     <rect width="720" height="405" fill="url(#heat)" />
-    <text x="30" y="44" fill="#f7f9ff" font-size="25" font-family="Sora, sans-serif">直播画面热力叠加</text>
+    <text x="30" y="44" fill="#f7f9ff" font-size="25" font-family="Sora, sans-serif">直播画面视觉热力图</text>
     <text x="30" y="80" fill="#d7e4ff" font-size="18" font-family="Sora, sans-serif">时刻 ${second}s | 强度 ${score.toFixed(2)}</text>
   </svg>
   `;
+
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
 export async function simulatePrediction(
   sourceType: SourceType,
   sourceId: string,
-  onProgress: (payload: MockProgress) => void
+  onProgress: (payload: MockProgress) => void,
+  signal?: AbortSignal
 ): Promise<PredictionResult> {
   const steps: ProgressStep[] =
     sourceType === "url"
       ? [
           { status: "queued", progress: 8, label: "任务已提交，正在排队", waitMs: 500 },
           { status: "downloading", progress: 26, label: "正在拉取直播回放视频", waitMs: 1300 },
-          { status: "processing", progress: 64, label: "多模态特征分析中（声音/文本/表情）", waitMs: 1500 },
+          { status: "processing", progress: 64, label: "多模态特征分析中（声音/文本/视觉）", waitMs: 1500 },
           { status: "processing", progress: 90, label: "正在生成销量预测与可视化图表", waitMs: 950 }
         ]
       : [
           { status: "queued", progress: 10, label: "任务已提交，正在排队", waitMs: 500 },
-          { status: "processing", progress: 58, label: "多模态特征分析中（声音/文本/表情）", waitMs: 1500 },
+          { status: "processing", progress: 58, label: "多模态特征分析中（声音/文本/视觉）", waitMs: 1500 },
           { status: "processing", progress: 90, label: "正在生成销量预测与可视化图表", waitMs: 950 }
         ];
 
   for (const step of steps) {
+    abortIfNeeded(signal);
     onProgress({ status: step.status, progress: step.progress, label: step.label });
-    await sleep(step.waitMs);
+    await sleep(step.waitMs, signal);
   }
+
+  abortIfNeeded(signal);
 
   const seed = hashSeed(sourceId);
   const voiceScore = Number((0.62 + (seed % 24) / 100).toFixed(4));
   const textScore = Number((0.58 + ((seed >> 4) % 30) / 100).toFixed(4));
-  const expressionScore = Number((0.55 + ((seed >> 7) % 32) / 100).toFixed(4));
+  const visualScore = Number((0.55 + ((seed >> 7) % 32) / 100).toFixed(4));
 
-  const fusedScore = Number(((voiceScore * 0.34 + textScore * 0.38 + expressionScore * 0.28)).toFixed(4));
+  const fusedScore = Number((voiceScore * 0.34 + textScore * 0.38 + visualScore * 0.28).toFixed(4));
   const confidence = Number((0.72 + ((seed >> 10) % 18) / 100).toFixed(4));
 
   const timeSeries: PredictionResult["time_series"] = [];
@@ -101,8 +127,8 @@ export async function simulatePrediction(
     });
     heatmapFrames.push({
       second,
-      score: Number((expressionScore + wave * 0.5).toFixed(4)),
-      image_url: createHeatmapDataUrl(expressionScore, second)
+      score: Number((visualScore + wave * 0.5).toFixed(4)),
+      image_url: createHeatmapDataUrl(visualScore, second)
     });
   }
 
@@ -126,7 +152,7 @@ export async function simulatePrediction(
     multi_feature_scores: {
       voice_score: voiceScore,
       text_score: textScore,
-      expression_score: expressionScore
+      visual_score: visualScore
     },
     sales_forecast: {
       predicted_sales: predictedSales,
@@ -136,8 +162,8 @@ export async function simulatePrediction(
     },
     recommendations: [
       "声音活力分偏高，建议在高峰时段增加限时口播和福利强调。",
-      "文本表达可再强化促单关键词，建议提升“限量、仅此一场”类文案密度。",
-      "表情感染力与销量预测正相关，建议主播在关键转化节点保持高互动状态。"
+      "文本表达可再强化促单关键词，提升“限量”“仅此一场”等文案密度。",
+      "视觉表现与销量预测正相关，建议优化灯光、画面构图和商品特写切换。"
     ]
   };
 }

@@ -14,14 +14,14 @@ from app.tasks import enqueue_task
 router = APIRouter(prefix="/api/videos", tags=["videos"])
 
 
-def _validate_mp4(file: UploadFile) -> None:
+def _validate_video_file(file: UploadFile) -> None:
     suffix = Path(file.filename or "").suffix.lower()
-    if suffix != ".mp4":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only .mp4 files are supported")
+    if suffix not in {".mp4", ".mov"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only .mp4 and .mov files are supported")
 
     content_type = (file.content_type or "").lower()
-    if content_type and content_type not in {"video/mp4", "application/mp4", "video/mpeg"}:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid MP4 content type")
+    if content_type and content_type not in {"video/mp4", "application/mp4", "video/mpeg", "video/quicktime"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid video content type")
 
 
 @router.post("/upload", response_model=TaskCreateResponse)
@@ -30,7 +30,7 @@ def upload_video(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> TaskCreateResponse:
-    _validate_mp4(file)
+    _validate_video_file(file)
     try:
         video_path = save_upload_file(file)
     except DownloadError as exc:

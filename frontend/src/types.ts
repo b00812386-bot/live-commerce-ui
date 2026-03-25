@@ -34,7 +34,7 @@ export interface PredictionResult {
   multi_feature_scores?: {
     voice_score: number;
     text_score: number;
-    expression_score: number;
+    visual_score: number;
   };
   sales_forecast?: {
     predicted_sales: number;
