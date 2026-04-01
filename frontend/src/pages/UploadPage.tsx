@@ -34,6 +34,20 @@ type FeatureItem = {
   tip: string;
 };
 
+type BusinessScoreItem = {
+  key: string;
+  label: string;
+  value: number;
+  tip: string;
+};
+
+type PotentialCard = {
+  score: number;
+  level: "高" | "中" | "低";
+  title: string;
+  description: string;
+};
+
 type HistoryRecord = {
   id: string;
   taskId: string;
@@ -252,6 +266,98 @@ function MetricHint({ label, tip, light = false }: { label: string; tip: string;
   );
 }
 
+function splitRadarLabel(label: string): string[] {
+  if (label.length <= 4) {
+    return [label];
+  }
+
+  if (label === "商品讲解完整度") {
+    return ["商品讲解", "完整度"];
+  }
+
+  if (label.length <= 6) {
+    const middle = Math.ceil(label.length / 2);
+    return [label.slice(0, middle), label.slice(middle)];
+  }
+
+  return [label.slice(0, 4), label.slice(4)];
+}
+
+function renderRadarTick(props: { x?: number; y?: number; payload?: { value?: string }; textAnchor?: string }): JSX.Element {
+  const x = props.x ?? 0;
+  const y = props.y ?? 0;
+  const label = props.payload?.value ?? "";
+  const lines = splitRadarLabel(label);
+  const firstDy = lines.length > 1 ? -4 : 4;
+  const textAnchor = props.textAnchor === "start" || props.textAnchor === "end" || props.textAnchor === "middle" ? props.textAnchor : "middle";
+
+  return (
+    <text x={x} y={y} textAnchor={textAnchor} fill="#4f6690" fontSize={12}>
+      {lines.map((line, index) => (
+        <tspan key={`${label}-${line}`} x={x} dy={index === 0 ? firstDy : 14}>
+          {line}
+        </tspan>
+      ))}
+    </text>
+  );
+}
+
+function getPotentialTone(level: "高" | "中" | "低"): "high" | "mid" | "low" {
+  if (level === "高") {
+    return "high";
+  }
+  if (level === "中") {
+    return "mid";
+  }
+  return "low";
+}
+
+function getScoreTone(value: number): "high" | "mid" | "low" {
+  if (value >= 0.8) {
+    return "high";
+  }
+  if (value >= 0.6) {
+    return "mid";
+  }
+  return "low";
+}
+
+function getRadarTheme(level: "高" | "中" | "低"): {
+  stroke: string;
+  fill: string;
+  grid: string;
+  text: string;
+  cardClass: string;
+} {
+  if (level === "高") {
+    return {
+      stroke: "#1d9b6c",
+      fill: "#37c48f",
+      grid: "#9fdcc3",
+      text: "#1e6f51",
+      cardClass: "radar-theme-high"
+    };
+  }
+
+  if (level === "中") {
+    return {
+      stroke: "#cf8a1a",
+      fill: "#f0b14a",
+      grid: "#ecd08c",
+      text: "#8b6114",
+      cardClass: "radar-theme-mid"
+    };
+  }
+
+  return {
+    stroke: "#d25555",
+    fill: "#ea7a7a",
+    grid: "#e6b0b0",
+    text: "#9f3f3f",
+    cardClass: "radar-theme-low"
+  };
+}
+
 export default function UploadPage(): JSX.Element {
   const [mode, setMode] = useState<"file" | "url">("file");
   const [file, setFile] = useState<File | null>(null);
@@ -434,6 +540,135 @@ export default function UploadPage(): JSX.Element {
       })),
     [featureScores]
   );
+
+  const businessScores = useMemo<BusinessScoreItem[]>(() => {
+    if (!result) {
+      return [];
+    }
+
+    const fromModel = result.multi_feature_scores;
+    const voiceScore = fromModel?.voice_score ?? average(result.linked_metrics.map((item) => item.metric_a));
+    const textScore = fromModel?.text_score ?? average(result.linked_metrics.map((item) => item.metric_b));
+    const visualScore = fromModel?.visual_score ?? Math.max(...result.time_series.map((item) => item.value));
+    const confidence = result.confidence;
+    const seriesValues = result.time_series.map((item) => item.value);
+    const earlyFocus = average(seriesValues.slice(0, 3));
+    const lateFocus = average(seriesValues.slice(-4));
+    const volatility = average(seriesValues.slice(1).map((value, index) => Math.abs(value - seriesValues[index])));
+    const stability = Math.max(0, Math.min(1, 1 - volatility * 3.2));
+    const dynamicEnergy = Math.max(0, Math.min(1, volatility * 4.5));
+
+    return [
+      {
+        key: "hook",
+        label: "吸睛开场",
+        value: Math.min(0.99, earlyFocus * 0.38 + visualScore * 0.26 + voiceScore * 0.2 + confidence * 0.16),
+        tip: "衡量前几秒是否快速抓住注意力，重点看开场节奏、口播进入速度和视觉显著性。"
+      },
+      {
+        key: "completeness",
+        label: "商品讲解完整度",
+        value: Math.min(0.99, textScore * 0.56 + confidence * 0.2 + lateFocus * 0.14 + stability * 0.1),
+        tip: "衡量商品定义、卖点、适用场景、价格与行动引导等关键信息是否覆盖完整。"
+      },
+      {
+        key: "benefit",
+        label: "利益点表达力",
+        value: Math.min(0.99, textScore * 0.52 + earlyFocus * 0.12 + voiceScore * 0.14 + confidence * 0.12 + lateFocus * 0.1),
+        tip: "衡量优惠、价值感、痛点解决与购买理由是否表达清楚且足够具体。"
+      },
+      {
+        key: "conversion",
+        label: "成交动作强度",
+        value: Math.min(0.99, result.prediction_value * 0.42 + textScore * 0.16 + voiceScore * 0.12 + lateFocus * 0.18 + confidence * 0.12),
+        tip: "衡量促单口播、行动引导与转化触发动作的强弱。"
+      },
+      {
+        key: "host",
+        label: "主播表现力",
+        value: Math.min(0.99, voiceScore * 0.46 + dynamicEnergy * 0.2 + visualScore * 0.14 + confidence * 0.1 + stability * 0.1),
+        tip: "衡量声音感染力、节奏推进感和镜头中的整体表现状态。"
+      }
+    ];
+  }, [result]);
+
+  const businessRadarData = useMemo(
+    () =>
+      businessScores.map((item) => ({
+        feature: item.label,
+        score: Number((item.value * 100).toFixed(1))
+      })),
+    [businessScores]
+  );
+
+  const potentialCard = useMemo<PotentialCard | null>(() => {
+    if (businessScores.length === 0) {
+      return null;
+    }
+
+    const score = Math.round(
+      (businessScores[0].value * 0.2 +
+        businessScores[1].value * 0.22 +
+        businessScores[2].value * 0.2 +
+        businessScores[3].value * 0.23 +
+        businessScores[4].value * 0.15) *
+        100
+    );
+
+    if (score >= 80) {
+      return {
+        score,
+        level: "高",
+        title: "高成交潜力",
+        description: "内容抓人、利益点清晰，讲解与促单动作衔接较强，适合优先投入或复用。"
+      };
+    }
+
+    if (score >= 60) {
+      return {
+        score,
+        level: "中",
+        title: "中成交潜力",
+        description: "内容具备一定转化基础，但在讲解完整度或促单强度上仍有提升空间。"
+      };
+    }
+
+    return {
+      score,
+      level: "低",
+      title: "低成交潜力",
+      description: "当前内容对成交的支撑偏弱，建议先补强开场、利益点和成交动作设计。"
+    };
+  }, [businessScores]);
+
+  const generatedRecommendations = useMemo(() => {
+    if (!result || businessScores.length === 0 || !potentialCard) {
+      return [];
+    }
+
+    const suggestionsByKey: Record<string, string> = {
+      hook: "吸睛开场偏弱，建议把核心利益点前置到前 3-5 秒，并更早进入商品或主播强口播画面。",
+      completeness: "商品讲解完整度偏弱，建议补齐“是什么、适合谁、为什么值、怎么买”这几类关键信息。",
+      benefit: "利益点表达力偏弱，建议强化价格优势、赠品福利、限时机制和痛点解决表达，减少空泛描述。",
+      conversion: "成交动作强度偏弱，建议增加明确 CTA，如“点击购物袋”“现在拍”“这轮福利马上结束”。",
+      host: "主播表现力偏弱，建议优化语速节奏、重音位置和情绪起伏，避免整段口播过平。"
+    };
+
+    const weakest = [...businessScores]
+      .sort((a, b) => a.value - b.value)
+      .filter((item, index, array) => index < 3 || item.value < 0.7 || item.value === array[0].value);
+
+    const dynamic = weakest.map((item) => suggestionsByKey[item.key]).filter(Boolean);
+    const modelBased = result.recommendations.slice(0, 2);
+
+    if (potentialCard.level === "低") {
+      dynamic.unshift("当前整体成交潜力偏低，建议优先重做开场结构和促单节奏，再进入下一轮复盘。");
+    } else if (potentialCard.level === "中") {
+      dynamic.unshift("当前已具备一定转化基础，建议优先补最弱的 1-2 个维度，不要平均用力。");
+    }
+
+    return [...new Set([...dynamic, ...modelBased])].slice(0, 5);
+  }, [businessScores, potentialCard, result]);
 
   const salesForecast = useMemo(() => {
     if (!result) {
@@ -900,7 +1135,7 @@ export default function UploadPage(): JSX.Element {
           <div>
             <p className="eyebrow">直播任务上传中心</p>
             <h1>销量预测工作台</h1>
-            <p className="muted">上传直播视频后，系统将输出声音、文本、视觉特征评分及经营分析指标。</p>
+            <p className="muted">上传直播视频后，系统将输出多模态雷达图、五维基础分和最终成交潜力判断。</p>
           </div>
           <span className="tag-chip">{mockMode ? "演示模式" : "后端模式"}</span>
         </div>
@@ -1007,8 +1242,8 @@ export default function UploadPage(): JSX.Element {
       <section className="card workspace-bottom">
         <div className="section-head">
           <div>
-            <h2>直播经营分析看板</h2>
-            <p className="muted">参考直播电商常见的流量、互动、转化、成交复盘口径进行展示。</p>
+            <h2>直播成交潜力分析</h2>
+            <p className="muted">结果区仅保留多模态雷达图、五维基础分、成交潜力和优化建议。</p>
           </div>
           <span className={`pill ${isActive ? "busy" : status === "succeeded" ? "done" : ""}`}>
             {isActive ? "分析中" : status === "succeeded" ? "已完成" : "等待任务"}
@@ -1021,170 +1256,112 @@ export default function UploadPage(): JSX.Element {
             <h3>{isActive ? "模型正在分析直播特征..." : "暂无分析结果"}</h3>
             <p>
               {isActive
-                ? "系统正在提取声音、文本、视觉特征，并结合流量与成交口径生成经营分析看板。"
+                ? "系统正在提取声音、文本、视觉特征，并计算五维基础分与成交潜力。"
                 : "请先在上方上传直播视频或输入视频 URL。"}
             </p>
           </div>
         )}
 
-        {result && commerceDashboard && (
+        {result && potentialCard && (
           <>
-            <div className="overview-grid">
-              {overviewMetrics.map((item) => (
-                <article key={item.key} className={`overview-card ${item.featured ? "overview-card-featured" : ""}`}>
-                  <h3>
-                    <MetricHint label={item.label} tip={item.tip} light={item.featured} />
-                  </h3>
-                  <p className={item.featured ? "overview-value overview-value-light" : "overview-value"}>{item.value}</p>
-                  {item.subtext && <p className={item.featured ? "overview-subtext overview-subtext-light" : "overview-subtext"}>{item.subtext}</p>}
-                </article>
-              ))}
-            </div>
+            {(() => {
+              const radarTheme = getRadarTheme(potentialCard.level);
+              return (
+            <div className="simplified-grid">
+              <div className={`feature-radar-card ${radarTheme.cardClass}`}>
+                <div className="section-subhead">
+                  <h3>多模态雷达图</h3>
+                  <p className="muted">保留声音、文本、视觉三类模型评分。</p>
+                </div>
+                <div className="radar-summary">
+                  <span className="radar-summary-label">综合表现</span>
+                  <strong>{Math.round(average(featureScores.map((item) => item.value)) * 100)} 分</strong>
+                </div>
+                <div className="feature-radar-layout">
+                  <ResponsiveContainer width="100%" height={350}>
+                    <RadarChart data={featureRadarData} margin={{ top: 28, right: 44, bottom: 28, left: 44 }} outerRadius="68%">
+                      <PolarGrid stroke={radarTheme.grid} />
+                      <PolarAngleAxis dataKey="feature" tick={renderRadarTick} />
+                      <PolarRadiusAxis domain={[0, 100]} tickCount={6} axisLine={false} />
+                      <Tooltip formatter={(value: number | string) => `${value} 分`} />
+                      <Radar name="多模态分数" dataKey="score" stroke={radarTheme.stroke} fill={radarTheme.fill} fillOpacity={0.35} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                  <div className="feature-radar-list">
+                    {featureScores.map((item) => (
+                      <article key={item.key} className={`score-tone-${getScoreTone(item.value)}`}>
+                        <div>
+                          <h4>
+                            <MetricHint label={item.label} tip={item.tip} />
+                          </h4>
+                          <p>{item.desc}</p>
+                        </div>
+                        <strong>{(item.value * 100).toFixed(1)}分</strong>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
-            <div className="funnel-card">
-              <div className="section-subhead">
-                <h3>直播转化漏斗</h3>
-                <p className="muted">按照曝光、进房、点击、加购、成交的典型直播电商链路展示。</p>
-              </div>
-              <div className="funnel-grid">
-                {funnelSteps.map((step, index) => {
-                  const base = funnelSteps[0]?.value || 1;
-                  const ratio = Math.max(step.value / base, 0.08);
-                  return (
-                    <article key={step.key} className="funnel-step" style={{ ["--funnel-ratio" as string]: ratio } as CSSProperties}>
-                      <div className="funnel-step-head">
-                        <MetricHint label={step.label} tip={step.tip} />
-                        <span className="funnel-step-index">0{index + 1}</span>
-                      </div>
-                      <strong>{step.value.toLocaleString()}</strong>
-                      <div className="funnel-bar">
-                        <div className="funnel-bar-fill" />
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="feature-radar-card">
-              <div className="section-subhead">
-                <h3>多特征综合雷达图</h3>
-                <p className="muted">保留内容质量侧的声音、文本、视觉三类模型评分。</p>
-              </div>
-              <div className="feature-radar-layout">
-                <ResponsiveContainer width="100%" height={320}>
-                  <RadarChart data={featureRadarData}>
-                    <PolarGrid />
-                    <PolarAngleAxis dataKey="feature" />
-                    <PolarRadiusAxis domain={[0, 100]} tickCount={6} />
-                    <Tooltip formatter={(value: number | string) => `${value} 分`} />
-                    <Radar name="特征分数" dataKey="score" stroke="#2e67ff" fill="#2e67ff" fillOpacity={0.35} />
-                  </RadarChart>
-                </ResponsiveContainer>
-                <div className="feature-radar-list">
-                  {featureScores.map((item) => (
-                    <article key={item.key}>
-                      <div>
-                        <h4>
-                          <MetricHint label={item.label} tip={item.tip} />
-                        </h4>
-                        <p>{item.desc}</p>
-                      </div>
-                      <strong>{(item.value * 100).toFixed(1)}分</strong>
-                    </article>
-                  ))}
+              <div className={`feature-radar-card ${radarTheme.cardClass}`}>
+                <div className="section-subhead">
+                  <h3>五维基础分雷达图</h3>
+                  <p className="muted">围绕直播转化链路组织的五个核心业务指标。</p>
+                </div>
+                <div className="radar-summary">
+                  <span className="radar-summary-label">五维综合</span>
+                  <strong>{potentialCard.score} 分</strong>
+                  <span className={`radar-summary-pill radar-summary-pill-${getPotentialTone(potentialCard.level)}`}>{potentialCard.level}</span>
+                </div>
+                <div className="feature-radar-layout">
+                  <ResponsiveContainer width="100%" height={350}>
+                    <RadarChart data={businessRadarData} margin={{ top: 30, right: 52, bottom: 36, left: 52 }} outerRadius="66%">
+                      <PolarGrid stroke={radarTheme.grid} />
+                      <PolarAngleAxis dataKey="feature" tick={renderRadarTick} />
+                      <PolarRadiusAxis domain={[0, 100]} tickCount={6} axisLine={false} />
+                      <Tooltip formatter={(value: number | string) => `${value} 分`} />
+                      <Radar name="五维基础分" dataKey="score" stroke={radarTheme.stroke} fill={radarTheme.fill} fillOpacity={0.3} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                  <div className="feature-radar-list">
+                    {businessScores.map((item) => (
+                      <article key={item.key} className={`score-tone-${getScoreTone(item.value)}`}>
+                        <div>
+                          <h4>
+                            <MetricHint label={item.label} tip={item.tip} />
+                          </h4>
+                        </div>
+                        <strong>{(item.value * 100).toFixed(1)}分</strong>
+                      </article>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
+              );
+            })()}
 
-            <div className="efficiency-card">
-              <div className="section-subhead">
-                <h3>流量与成交效率指标</h3>
-                <p className="muted">按直播复盘常见的流量承接、用户停留、点击和成交效率口径组织。</p>
-              </div>
-              <div className="efficiency-grid">
-                {efficiencyMetrics.map((item) => (
-                  <article key={item.key} className="efficiency-item">
-                    <h4>
-                      <MetricHint label={item.label} tip={item.tip} />
-                    </h4>
-                    <p className="metric">{item.value}</p>
-                  </article>
-                ))}
-              </div>
-            </div>
-
-            <div className="chart-grid">
-              <div className="chart-card">
-                <h3>
-                  <MetricHint label="流量热度与单分钟 GMV 趋势" tip="同时观察观看热度和单位时间成交额，便于定位高价值讲解时段。" />
-                </h3>
-                <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="second" />
-                    <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" />
-                    <Tooltip />
-                    <Legend />
-                    <Line yAxisId="left" type="monotone" dataKey="trafficHeat" name="观看热度" stroke="#2e67ff" strokeWidth={2.4} dot={false} />
-                    <Line yAxisId="right" type="monotone" dataKey="gmvPerMinute" name="单分钟 GMV" stroke="#20a579" strokeWidth={2.4} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="chart-card">
-                <h3>
-                  <MetricHint label="互动-点击-成交联动" tip="用互动率、商品点击率和成交转化率的动态变化判断内容承接效率。" />
-                </h3>
-                <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="second" />
-                    <YAxis domain={[0, 20]} unit="%" />
-                    <Tooltip formatter={(value: number | string) => `${value}%`} />
-                    <Legend />
-                    <Line type="monotone" dataKey="interactionRate" name="互动率" stroke="#2e67ff" strokeWidth={2.2} dot={false} />
-                    <Line type="monotone" dataKey="clickRate" name="商品点击率" stroke="#63a3ff" strokeWidth={2.2} dot={false} />
-                    <Line type="monotone" dataKey="conversionRate" name="成交转化率" stroke="#ff8b3d" strokeWidth={2.2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="heatmap-layout">
-              <div className="chart-card">
-                <h3>
-                  <MetricHint label="视觉热力图" tip="突出画面中可能影响成交的高注意力区域，用于辅助复盘镜头和商品展示。" />
-                </h3>
-                {selectedFrame && (
-                  <img src={artifactUrl(selectedFrame.image_url)} alt={`视觉热力图（${selectedFrame.second}s）`} className="heatmap-main" />
-                )}
-              </div>
-              <div className="heatmap-list">
-                {result.heatmap_frames.map((frame) => (
-                  <button
-                    key={frame.second}
-                    type="button"
-                    className={frame.second === selectedFrame?.second ? "active" : ""}
-                    onClick={() => setSelectedSecond(frame.second)}
-                  >
-                    <span>时刻 {frame.second}s</span>
-                    <strong>{(frame.score * 100).toFixed(1)}%</strong>
-                  </button>
-                ))}
-              </div>
+            <div className="potential-card-wrap">
+              <article className={`potential-card potential-${getPotentialTone(potentialCard.level)} is-active`}>
+                <div className="potential-card-top">
+                  <div>
+                    <p className="eyebrow">最终指标</p>
+                    <h3>{potentialCard.title}</h3>
+                  </div>
+                  <span className={`potential-badge potential-badge-${getPotentialTone(potentialCard.level)}`}>{potentialCard.level}</span>
+                </div>
+                <p className="potential-score">{potentialCard.score} 分</p>
+                <p className="potential-desc">{potentialCard.description}</p>
+              </article>
             </div>
 
             <div className="chart-card recommendations">
-              <h3>
-                <MetricHint label="直播优化建议" tip="结合当前预测结果，输出可用于直播脚本、货盘和镜头调度优化的建议。" />
-              </h3>
+              <div className="section-subhead">
+                <h3>优化建议</h3>
+                <p className="muted">根据五维基础分中的短板维度自动生成，优先提示最影响成交潜力的问题。</p>
+              </div>
               <ul>
-                <li>建议在高热度时段加大福利口播和限时转化动作，承接峰值流量。</li>
-                <li>商品点击率和加购率适合作为复盘重点，重点检查讲解节点与购物袋切换节奏。</li>
-                <li>视觉热力区域可用于优化商品特写、主播站位和镜头稳定性。</li>
-                {result.recommendations.map((item) => (
+                {generatedRecommendations.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>

@@ -786,6 +786,113 @@ button:disabled {
   padding: 14px;
 }
 
+.feature-radar-card.radar-theme-high {
+  border-color: rgba(57, 165, 120, 0.36);
+  background: linear-gradient(180deg, rgba(241, 251, 246, 0.96), rgba(255, 255, 255, 0.82));
+}
+
+.feature-radar-card.radar-theme-mid {
+  border-color: rgba(224, 174, 75, 0.38);
+  background: linear-gradient(180deg, rgba(255, 249, 236, 0.97), rgba(255, 255, 255, 0.84));
+}
+
+.feature-radar-card.radar-theme-low {
+  border-color: rgba(214, 100, 100, 0.3);
+  background: linear-gradient(180deg, rgba(255, 242, 242, 0.97), rgba(255, 255, 255, 0.84));
+}
+
+.score-summary-card {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px 18px;
+  background: linear-gradient(145deg, rgba(235, 244, 255, 0.98), rgba(247, 250, 255, 0.92));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.score-summary-right {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.score-summary-value {
+  font-family: "Sora", sans-serif;
+  font-size: 2.4rem;
+  line-height: 1;
+  color: #1543a1;
+}
+
+.score-summary-tag,
+.radar-summary-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.score-summary-tag-high,
+.radar-summary-pill-high {
+  color: #0f4fd0;
+  background: rgba(205, 230, 255, 0.92);
+}
+
+.score-summary-tag-mid,
+.radar-summary-pill-mid {
+  color: #9a6500;
+  background: rgba(255, 241, 196, 0.95);
+}
+
+.score-summary-tag-low,
+.radar-summary-pill-low {
+  color: #62718c;
+  background: rgba(230, 236, 245, 0.95);
+}
+
+.simplified-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.radar-summary {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.radar-summary-label {
+  color: #60769a;
+  font-size: 0.88rem;
+}
+
+.radar-summary strong {
+  font-family: "Sora", sans-serif;
+  font-size: 1.2rem;
+  color: #1848a8;
+}
+
+.feature-radar-card.radar-theme-high .radar-summary strong {
+  color: #1e6f51;
+}
+
+.feature-radar-card.radar-theme-mid .radar-summary strong {
+  color: #8b6114;
+}
+
+.feature-radar-card.radar-theme-low .radar-summary strong {
+  color: #9f3f3f;
+}
+
 .feature-radar-layout {
   margin-top: 10px;
   display: grid;
@@ -810,6 +917,21 @@ button:disabled {
   align-items: flex-start;
 }
 
+.feature-radar-list article.score-tone-high {
+  background: rgba(233, 247, 239, 0.95);
+  border-color: rgba(87, 182, 116, 0.35);
+}
+
+.feature-radar-list article.score-tone-mid {
+  background: rgba(255, 247, 224, 0.96);
+  border-color: rgba(232, 181, 72, 0.34);
+}
+
+.feature-radar-list article.score-tone-low {
+  background: rgba(255, 235, 235, 0.96);
+  border-color: rgba(219, 92, 92, 0.32);
+}
+
 .feature-radar-list h4 {
   font-size: 0.92rem;
 }
@@ -823,6 +945,18 @@ button:disabled {
 .feature-radar-list strong {
   color: #1f57df;
   white-space: nowrap;
+}
+
+.feature-radar-list article.score-tone-high strong {
+  color: #207145;
+}
+
+.feature-radar-list article.score-tone-mid strong {
+  color: #9a6500;
+}
+
+.feature-radar-list article.score-tone-low strong {
+  color: #c53d3d;
 }
 
 .chart-grid {
@@ -884,6 +1018,124 @@ button:disabled {
 
 .recommendations {
   margin-top: 14px;
+}
+
+.potential-card-wrap {
+  margin-top: 14px;
+}
+
+.potential-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.potential-high {
+  background: linear-gradient(145deg, #1148b8, #2e67ff);
+}
+
+.potential-mid {
+  background: linear-gradient(145deg, #2c5fbe, #5f8fff);
+}
+
+.potential-low {
+  background: linear-gradient(145deg, #58739b, #7f96b7);
+}
+
+.potential-card.is-active {
+  opacity: 1;
+  transform: translateY(-2px);
+  box-shadow: 0 20px 44px rgba(11, 35, 82, 0.24);
+}
+
+.potential-badge-high {
+  background: rgba(190, 233, 255, 0.18);
+}
+
+.potential-badge-mid {
+  background: rgba(255, 241, 196, 0.18);
+}
+
+.potential-badge-low {
+  background: rgba(230, 236, 245, 0.18);
+}
+
+.potential-card {
+  border-radius: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  color: #ffffff;
+  box-shadow: 0 18px 36px rgba(10, 29, 67, 0.16);
+  opacity: 0.76;
+  transform: translateY(0);
+  transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+
+.potential-高 {
+  background: linear-gradient(145deg, #1148b8, #2e67ff);
+}
+
+.potential-中 {
+  background: linear-gradient(145deg, #2c5fbe, #5f8fff);
+}
+
+.potential-低 {
+  background: linear-gradient(145deg, #58739b, #7f96b7);
+}
+
+.potential-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.potential-badge {
+  min-width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-family: "Sora", sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.potential-badge-高 {
+  background: rgba(190, 233, 255, 0.18);
+}
+
+.potential-badge-中 {
+  background: rgba(255, 241, 196, 0.18);
+}
+
+.potential-badge-低 {
+  background: rgba(230, 236, 245, 0.18);
+}
+
+.potential-score {
+  margin-top: 16px;
+  font-family: "Sora", sans-serif;
+  font-size: 2.4rem;
+  line-height: 1;
+  color: #ffffff;
+  text-shadow: 0 2px 10px rgba(3, 13, 36, 0.3);
+}
+
+.potential-title {
+  margin-top: 10px;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.potential-desc {
+  margin-top: 8px;
+  max-width: 760px;
+  color: rgba(237, 244, 255, 0.92);
+  line-height: 1.65;
 }
 
 .recommendations ul {
@@ -1042,6 +1294,23 @@ button:disabled {
 }
 
 @media (max-width: 1080px) {
+  .score-summary-card,
+  .score-summary-right {
+    align-items: flex-start;
+  }
+
+  .score-summary-card {
+    flex-direction: column;
+  }
+
+  .simplified-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .potential-grid {
+    grid-template-columns: 1fr;
+  }
+
   .sales-forecast {
     grid-template-columns: 1fr;
   }
@@ -1135,6 +1404,18 @@ button:disabled {
 
   .history-item-actions {
     justify-content: flex-start;
+  }
+
+  .potential-card {
+    padding: 16px;
+  }
+
+  .potential-score {
+    font-size: 2rem;
+  }
+
+  .score-summary-value {
+    font-size: 2rem;
   }
 
   .efficiency-grid {
