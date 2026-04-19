@@ -1,6 +1,6 @@
 import type { PaginatedTasks, TaskCreateResponse, TaskItem, TaskResultResponse } from "./types";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_BASE ?? "";
 const MOCK_MODE = (import.meta.env.VITE_MOCK_MODE ?? "true").toLowerCase() !== "false";
 const TOKEN_KEY = "token";
 const USERS_KEY = "vp_users";
